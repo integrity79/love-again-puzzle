@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { createClient } from '@supabase/supabase-js';
 
 // Supabase 환경변수 설정
@@ -26,6 +26,9 @@ export default function WordPuzzleGame() {
   
   const [showHint, setShowHint] = useState(false);
   const [draggedIndex, setDraggedIndex] = useState(null);
+
+  // 모바일 터치 드래그 위치 추적을 위한 가상 컨테이너 Ref
+  const listRef = useRef(null);
 
   // 1. 단어 뒤섞기 (무작위 셔플)
   const startChallenge = () => {
@@ -65,7 +68,17 @@ export default function WordPuzzleGame() {
     }
   };
 
-  // --- 드래그 앤 드롭 이벤트 핸들러 ---
+  const handleStopGame = () => {
+    const isConfirm = window.confirm("진행 중인 게임을 중단하고 첫 화면으로 돌아가시겠습니까?\n(현재까지의 기록은 저장되지 않습니다.)");
+    if (isConfirm) {
+      if (timerInterval) clearInterval(timerInterval);
+      setWords([]);
+      setElapsedTime(0);
+      setGameState('READY');
+    }
+  };
+
+  // --- PC 마우스 드래그 앤 드롭 핸들러 ---
   const handleDragStart = (index) => {
     setDraggedIndex(index);
   };
@@ -88,17 +101,41 @@ export default function WordPuzzleGame() {
     checkAnswer(words); 
   };
 
-  // 터치 스크린 화살표 버튼 작동
-  const moveWordRow = (index, direction) => {
-    const targetIndex = index + direction;
-    if (targetIndex < 0 || targetIndex >= words.length) return;
-    const nextWords = [...words];
-    const temp = nextWords[index];
-    nextWords[index] = nextWords[targetIndex];
-    nextWords[targetIndex] = temp;
-    setWords(nextWords);
+  // --- 📱 모바일 초고속 터치 드래그 고도화 (딜레이 0ms) ---
+  const handleTouchStart = (index) => {
+    setDraggedIndex(index);
+  };
+
+  const handleTouchMove = (e) => {
+    if (draggedIndex === null) return;
     
-    checkAnswer(nextWords);
+    // 모바일 전체 스크롤 현상 차단하여 순수 드래그 반응성 극대화
+    if (e.cancelable) e.preventDefault(); 
+
+    const touchLocation = e.touches[0];
+    if (!listRef.current) return;
+
+    // 현재 손가락 위치 아래에 있는 DOM 요소를 실시간 감지
+    const targetElement = document.elementFromPoint(touchLocation.clientX, touchLocation.clientY);
+    const rowElement = targetElement?.closest('[data-index]');
+    
+    if (rowElement) {
+      const targetIndex = parseInt(rowElement.getAttribute('data-index'), 10);
+      if (targetIndex !== draggedIndex && !isNaN(targetIndex)) {
+        const nextWords = [...words];
+        const draggedItem = nextWords[draggedIndex];
+        nextWords.splice(draggedIndex, 1);
+        nextWords.splice(targetIndex, 0, draggedItem);
+        
+        setDraggedIndex(targetIndex);
+        setWords(nextWords);
+      }
+    }
+  };
+
+  const handleTouchEnd = () => {
+    setDraggedIndex(null);
+    checkAnswer(words); // 손가락을 떼는 순간 즉시 정답 확인
   };
 
   // 4. Supabase 데이터 통신
@@ -124,32 +161,12 @@ export default function WordPuzzleGame() {
     setGameState('RANKING');
   };
 
-  // 첫 페이지에서 바로 랭킹을 보기 위한 함수
   const handleViewRanking = () => {
     fetchLeaderboard();
   };
 
-  // 5. 카카오톡 링크 공유
-  const shareToKakao = () => {
-    if (window.Kakao) {
-      window.Kakao.Link.sendDefault({
-        objectType: 'feed',
-        content: {
-          title: '🔥 말씀 퍼즐 타임어택 성공!',
-          description: `"${name}" 성도님이 "다시 사랑하라" 말씀을 ${elapsedTime}초 만에 완성했습니다! 당신도 도전해보세요!`,
-          imageUrl: 'https://your-domain.com/share-banner.png', 
-          link: { mobileWebUrl: window.location.href, webUrl: window.location.href },
-        },
-        buttons: [{ title: '나도 도전하기', link: { mobileWebUrl: window.location.href, webUrl: window.location.href } }]
-      });
-    } else {
-      navigator.clipboard.writeText(`[다시 사랑하라 챌린지]\n내가 세운 기록은 ${elapsedTime}초입니다!\n지금 참여하기: ${window.location.href}`);
-      alert('공유 문구가 복사되었습니다! 카톡방에 붙여넣어 보세요.');
-    }
-  };
-
   return (
-    <div className="max-w-md mx-auto min-h-screen bg-slate-50 flex flex-col justify-between p-4 shadow-lg select-none">
+    <div className="w-full max-w-md mx-auto min-h-screen bg-slate-50 flex flex-col justify-between p-4 shadow-lg select-none box-border">
       <header className="bg-indigo-700 text-white p-5 rounded-2xl text-center shadow-md">
         <h1 className="text-2xl font-bold">"다시 사랑하라"</h1>
         <p className="text-xs text-indigo-200 mt-1">창립기념주일 말씀 퍼즐 챌린지</p>
@@ -171,7 +188,6 @@ export default function WordPuzzleGame() {
               >
                 챌린지 시작하기 ⏱️
               </button>
-              {/* 첫 페이지 명예의 전당 버튼 추가 */}
               <button 
                 onClick={handleViewRanking} 
                 className="w-full bg-white hover:bg-slate-100 text-slate-700 font-semibold py-3 rounded-xl text-sm border border-slate-200 shadow-sm transition"
@@ -183,38 +199,51 @@ export default function WordPuzzleGame() {
         )}
 
         {gameState === 'PLAYING' && (
-          <div>
-            <div className="flex justify-between items-center mb-4 px-2">
+          <div className="w-full">
+            <div className="flex justify-between items-center mb-4 px-1">
               <div className="text-2xl font-mono font-bold text-indigo-600">{elapsedTime} 초</div>
-              <button 
-                onClick={() => setShowHint(true)} 
-                className="bg-amber-100 hover:bg-amber-200 text-amber-800 text-xs font-bold px-3 py-2 rounded-lg transition border border-amber-200 flex items-center space-x-1"
-              >
-                <span>💡 말씀 힌트 보기</span>
-              </button>
+              
+              <div className="flex space-x-1.5">
+                <button 
+                  onClick={() => setShowHint(true)} 
+                  className="bg-amber-50 hover:bg-amber-100 text-amber-800 text-xs font-bold px-2.5 py-2 rounded-lg transition border border-amber-200"
+                >
+                  💡 힌트
+                </button>
+                <button 
+                  onClick={handleStopGame} 
+                  className="bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold px-2.5 py-2 rounded-lg transition border border-rose-200"
+                >
+                  🛑 중단
+                </button>
+              </div>
             </div>
 
-            <p className="text-[11px] text-slate-400 text-center mb-2">💡 카드를 길게 누른 채 위아래로 끌어서 움직이세요.</p>
+            <p className="text-[11px] text-slate-400 text-center mb-2">👇 카드를 터치하자마자 위아래로 바로 이동할 수 있습니다.</p>
             
-            <div className="space-y-2 max-h-[55vh] overflow-y-auto bg-slate-100 p-2 rounded-xl border border-slate-200">
+            {/* 터치 실시간 좌표 연동을 위한 Ref 주입 */}
+            <div 
+              ref={listRef}
+              className="w-full space-y-2 max-h-[55vh] overflow-y-auto bg-slate-100 p-2 rounded-xl border border-slate-200 touch-none"
+            >
               {words.map((word, idx) => (
                 <div 
                   key={idx} 
+                  data-index={idx}
                   draggable
                   onDragStart={() => handleDragStart(idx)}
                   onDragOver={(e) => handleDragOver(e, idx)}
                   onDragEnd={handleDragEnd}
+                  onTouchStart={() => handleTouchStart(idx)}
+                  onTouchMove={handleTouchMove}
+                  onTouchEnd={handleTouchEnd}
                   className={`bg-white p-3 rounded-lg flex justify-between items-center shadow-sm border-2 cursor-grab active:cursor-grabbing transition-all ${
-                    draggedIndex === idx ? 'border-indigo-500 bg-indigo-50 scale-102 opacity-50' : 'border-slate-200'
+                    draggedIndex === idx ? 'border-indigo-500 bg-indigo-50 scale-102 shadow-md' : 'border-slate-200'
                   }`}
                 >
-                  <div className="flex items-center space-x-3">
+                  <div className="flex items-center space-x-3 w-full">
                     <span className="text-slate-300 text-xs font-mono">☰</span>
                     <span className="text-slate-800 font-medium text-sm">{word}</span>
-                  </div>
-                  <div className="flex space-x-1 md:hidden">
-                    <button onClick={() => moveWordRow(idx, -1)} disabled={idx === 0} className="p-1 bg-slate-50 text-[10px] rounded border disabled:opacity-20">▲</button>
-                    <button onClick={() => moveWordRow(idx, 1)} disabled={idx === words.length - 1} className="p-1 bg-slate-50 text-[10px] rounded border disabled:opacity-20">▼</button>
                   </div>
                 </div>
               ))}
@@ -244,9 +273,9 @@ export default function WordPuzzleGame() {
         )}
 
         {gameState === 'RANKING' && (
-          <div>
+          <div className="w-full">
             <h2 className="text-lg font-bold text-slate-800 mb-3">🏆 실시간 명예의 전당 (Top 10)</h2>
-            <div className="space-y-1.5 mb-6 max-h-[40vh] overflow-y-auto">
+            <div className="w-full space-y-1.5 mb-6 max-h-[40vh] overflow-y-auto">
               {leaderboard.map((player, index) => (
                 <div key={player.id} className="flex justify-between p-3 bg-white border rounded-xl text-sm items-center shadow-sm">
                   <span className="font-bold text-indigo-600">{index + 1}위. {player.name} <span className="text-xs text-slate-400 font-normal">({player.department})</span></span>
