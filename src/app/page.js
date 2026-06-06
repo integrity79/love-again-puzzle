@@ -109,13 +109,11 @@ export default function WordPuzzleGame() {
   const handleTouchMove = (e) => {
     if (draggedIndex === null) return;
     
-    // 드래그 핸들을 잡았을 때만 화면 스크롤을 막아 부드럽게 움직이게 조절
     if (e.cancelable) e.preventDefault(); 
 
     const touchLocation = e.touches[0];
     if (!listRef.current) return;
 
-    // 현재 손가락 위치 아래에 있는 요소 감지
     const targetElement = document.elementFromPoint(touchLocation.clientX, touchLocation.clientY);
     const rowElement = targetElement?.closest('[data-index]');
     
@@ -221,7 +219,6 @@ export default function WordPuzzleGame() {
 
             <p className="text-[11px] text-slate-400 text-center mb-2">💡 왼쪽의 핸들(☰)을 밀면 이동하고, 글자를 밀면 스크롤됩니다.</p>
             
-            {/* 전체 박스에 걸려있던 touch-none을 제거하여 일반 스크롤을 허용함 */}
             <div 
               ref={listRef}
               className="w-full space-y-2 max-h-[52vh] overflow-y-auto bg-slate-100 p-2 rounded-xl border border-slate-200"
@@ -235,7 +232,6 @@ export default function WordPuzzleGame() {
                   }`}
                 >
                   <div className="flex items-center space-x-3 w-full">
-                    {/* ★ 오직 이 ☰ 핸들 버튼 영역을 터치했을 때만 즉시 드래그가 작동하도록 바인딩 */}
                     <span 
                       draggable
                       onDragStart={() => handleDragStart(idx)}
@@ -262,17 +258,29 @@ export default function WordPuzzleGame() {
             <p className="text-3xl font-mono font-black my-4 text-slate-800">{elapsedTime} 초</p>
             
             <form onSubmit={handleSubmitScore} className="space-y-3 text-left">
-              <div>
-                <label className="text-xs text-slate-500 font-bold">소속</label>
-                <input type="text" placeholder="예: 청년부 / 3교구" value={department} onChange={e => setDepartment(e.target.value)} className="w-full p-2 border rounded-lg text-sm" required />
-              </div>
+              {/* 이름과 소속 입력창 순서 변경 완료 */}
               <div>
                 <label className="text-xs text-slate-500 font-bold">이름</label>
                 <input type="text" placeholder="성함을 입력하세요" value={name} onChange={e => setName(e.target.value)} className="w-full p-2 border rounded-lg text-sm" required />
               </div>
-              <button type="submit" className="w-full bg-indigo-600 text-white py-3 rounded-lg font-bold text-sm shadow">
-                내 기록 랭킹에 등록하기 🏅
-              </button>
+              <div>
+                <label className="text-xs text-slate-500 font-bold">소속</label>
+                <input type="text" placeholder="예: 청년부 / 3교구" value={department} onChange={e => setDepartment(e.target.value)} className="w-full p-2 border rounded-lg text-sm" required />
+              </div>
+              
+              <div className="pt-2 space-y-2">
+                <button type="submit" className="w-full bg-indigo-600 text-white py-3 rounded-lg font-bold text-sm shadow hover:bg-indigo-700 transition">
+                  내 기록 랭킹에 등록하기 🏅
+                </button>
+                {/* 기록 저장 단계에서 바로 다시하기 버튼 추가 완료 */}
+                <button 
+                  type="button"
+                  onClick={startChallenge}
+                  className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 py-3 rounded-lg font-semibold text-sm border transition"
+                >
+                  기록 등록 없이 다시 도전하기 🔄
+                </button>
+              </div>
             </form>
           </div>
         )}
@@ -280,7 +288,7 @@ export default function WordPuzzleGame() {
         {gameState === 'RANKING' && (
           <div className="w-full">
             <h2 className="text-lg font-bold text-slate-800 mb-3">🏆 실시간 명예의 전당 (Top 10)</h2>
-            <div className="w-full space-y-1.5 mb-6 max-h-[40vh] overflow-y-auto">
+            <div className="w-full space-y-1.5 mb-6 max-h-[45vh] overflow-y-auto">
               {leaderboard.map((player, index) => (
                 <div key={player.id} className="flex justify-between p-3 bg-white border rounded-xl text-sm items-center shadow-sm">
                   <span className="font-bold text-indigo-600">{index + 1}위. {player.name} <span className="text-xs text-slate-400 font-normal">({player.department})</span></span>
@@ -307,9 +315,8 @@ export default function WordPuzzleGame() {
               <span>💡 전체 말씀 구절</span>
             </h3>
             <div className="bg-slate-50 p-4 rounded-xl text-sm text-slate-700 leading-relaxed border mb-4 font-medium">
-              <p className="mb-2">"이스라엘아 들으라 우리 하나님 여호와는 오직 유일한 여호와이시니"</p>
-              <p>"너는 마음을 다하고 뜻을 다하고 힘을 다하여 네 하나님 여호와를 사랑하라"</p>
-              <strong>(신명기 6:4-5)</strong><br />
+              <p className="mb-2"><strong>신명기 6장 4절</strong><br />"이스라엘아 들으라 우리 하나님 여호와는 오직 유일한 여호와이시니"</p>
+              <p><strong>5절</strong><br />"너는 마음을 다하고 뜻을 다하고 힘을 다하여 네 하나님 여호와를 사랑하라"</p>
             </div>
             <button 
               onClick={() => setShowHint(false)}
