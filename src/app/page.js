@@ -11,7 +11,7 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 // 원본 말씀 구조 정의
 const CORRECT_WORDS = [
   "이스라엘아", "들으라", "우리 하나님", "여호와는", "오직 유일한", "여호와이시니",
-  "너는", "마음을 다하고", "뜻을 다하고", "힘을 다하여", "네 하나님", "여호와를", "사랑하라"
+  "너는", "마음을 다하고", "뜻을 다하고", "힘을 다하여", "네 하나님", "여호와를", "사랑하라", "신명기 6장 4-5절"
 ];
 
 export default function WordPuzzleGame() {
@@ -315,8 +315,9 @@ export default function WordPuzzleGame() {
               <span>💡 전체 말씀 구절</span>
             </h3>
             <div className="bg-slate-50 p-4 rounded-xl text-sm text-slate-700 leading-relaxed border mb-4 font-medium">
-              <p className="mb-2"><strong>신명기 6장 4절</strong><br />"이스라엘아 들으라 우리 하나님 여호와는 오직 유일한 여호와이시니"</p>
-              <p><strong>5절</strong><br />"너는 마음을 다하고 뜻을 다하고 힘을 다하여 네 하나님 여호와를 사랑하라"</p>
+              <p className="mb-2">"이스라엘아 들으라 우리 하나님 여호와는 오직 유일한 여호와이시니"</p>
+              <p>"너는 마음을 다하고 뜻을 다하고 힘을 다하여 네 하나님 여호와를 사랑하라"</p>
+              <p><strong>신명기 6장 4-5절</strong></p><br />
             </div>
             <button 
               onClick={() => setShowHint(false)}
