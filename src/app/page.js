@@ -27,7 +27,7 @@ export default function WordPuzzleGame() {
   const [showHint, setShowHint] = useState(false);
   const [draggedIndex, setDraggedIndex] = useState(null);
 
-  // 모바일 터치 드래그 위치 추적을 위한 가상 컨테이너 Ref
+  // 모바일 터치 좌표 추적용 Ref
   const listRef = useRef(null);
 
   // 1. 단어 뒤섞기 (무작위 셔플)
@@ -101,7 +101,7 @@ export default function WordPuzzleGame() {
     checkAnswer(words); 
   };
 
-  // --- 📱 모바일 초고속 터치 드래그 고도화 (딜레이 0ms) ---
+  // --- 📱 모바일 초고속 터치 드래그 (핸들 전용 제어) ---
   const handleTouchStart = (index) => {
     setDraggedIndex(index);
   };
@@ -109,13 +109,13 @@ export default function WordPuzzleGame() {
   const handleTouchMove = (e) => {
     if (draggedIndex === null) return;
     
-    // 모바일 전체 스크롤 현상 차단하여 순수 드래그 반응성 극대화
+    // 드래그 핸들을 잡았을 때만 화면 스크롤을 막아 부드럽게 움직이게 조절
     if (e.cancelable) e.preventDefault(); 
 
     const touchLocation = e.touches[0];
     if (!listRef.current) return;
 
-    // 현재 손가락 위치 아래에 있는 DOM 요소를 실시간 감지
+    // 현재 손가락 위치 아래에 있는 요소 감지
     const targetElement = document.elementFromPoint(touchLocation.clientX, touchLocation.clientY);
     const rowElement = targetElement?.closest('[data-index]');
     
@@ -135,7 +135,7 @@ export default function WordPuzzleGame() {
 
   const handleTouchEnd = () => {
     setDraggedIndex(null);
-    checkAnswer(words); // 손가락을 떼는 순간 즉시 정답 확인
+    checkAnswer(words); 
   };
 
   // 4. Supabase 데이터 통신
@@ -219,31 +219,36 @@ export default function WordPuzzleGame() {
               </div>
             </div>
 
-            <p className="text-[11px] text-slate-400 text-center mb-2">👇 카드를 터치하자마자 위아래로 바로 이동할 수 있습니다.</p>
+            <p className="text-[11px] text-slate-400 text-center mb-2">💡 왼쪽의 핸들(☰)을 밀면 이동하고, 글자를 밀면 스크롤됩니다.</p>
             
-            {/* 터치 실시간 좌표 연동을 위한 Ref 주입 */}
+            {/* 전체 박스에 걸려있던 touch-none을 제거하여 일반 스크롤을 허용함 */}
             <div 
               ref={listRef}
-              className="w-full space-y-2 max-h-[55vh] overflow-y-auto bg-slate-100 p-2 rounded-xl border border-slate-200 touch-none"
+              className="w-full space-y-2 max-h-[52vh] overflow-y-auto bg-slate-100 p-2 rounded-xl border border-slate-200"
             >
               {words.map((word, idx) => (
                 <div 
                   key={idx} 
                   data-index={idx}
-                  draggable
-                  onDragStart={() => handleDragStart(idx)}
-                  onDragOver={(e) => handleDragOver(e, idx)}
-                  onDragEnd={handleDragEnd}
-                  onTouchStart={() => handleTouchStart(idx)}
-                  onTouchMove={handleTouchMove}
-                  onTouchEnd={handleTouchEnd}
-                  className={`bg-white p-3 rounded-lg flex justify-between items-center shadow-sm border-2 cursor-grab active:cursor-grabbing transition-all ${
+                  className={`bg-white p-3 rounded-lg flex justify-between items-center shadow-sm border-2 transition-all ${
                     draggedIndex === idx ? 'border-indigo-500 bg-indigo-50 scale-102 shadow-md' : 'border-slate-200'
                   }`}
                 >
                   <div className="flex items-center space-x-3 w-full">
-                    <span className="text-slate-300 text-xs font-mono">☰</span>
-                    <span className="text-slate-800 font-medium text-sm">{word}</span>
+                    {/* ★ 오직 이 ☰ 핸들 버튼 영역을 터치했을 때만 즉시 드래그가 작동하도록 바인딩 */}
+                    <span 
+                      draggable
+                      onDragStart={() => handleDragStart(idx)}
+                      onDragOver={(e) => handleDragOver(e, idx)}
+                      onDragEnd={handleDragEnd}
+                      onTouchStart={() => handleTouchStart(idx)}
+                      onTouchMove={handleTouchMove}
+                      onTouchEnd={handleTouchEnd}
+                      className="text-slate-400 text-base font-mono p-1 px-2 bg-slate-50 rounded border border-slate-200 cursor-grab active:cursor-grabbing touch-none select-none"
+                    >
+                      ☰
+                    </span>
+                    <span className="text-slate-800 font-medium text-sm select-none">{word}</span>
                   </div>
                 </div>
               ))}
